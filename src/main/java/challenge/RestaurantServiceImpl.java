@@ -22,31 +22,32 @@ public class RestaurantServiceImpl implements RestaurantService {
 	@Override
 	public NeighborhoodRedis findInNeighborhood(double x, double y) {
 
-		//Encontrar bairro no mongo
 		NeighborhoodMongo neighborhoodMongo = getNeighborhoodByUserLocation(x, y);
 
-		//se etiver salvo no redis neighborhood:id_bairro
 		Optional<NeighborhoodRedis> neighborhoodRedisAlreadyExists =
 				neighborhoodRedisRepository.findById(neighborhoodMongo.getId());
 
-		//retornar esse objeto
 		if (neighborhoodRedisAlreadyExists.isPresent())
 			return neighborhoodRedisAlreadyExists.get();
 
-		//senao, encontrar todos os restaurantes do bairro
 		List<RestaurantMongo> restaurantsMongo = restaurantsMongoRepository
 				.findAllByLocationWithin(neighborhoodMongo.getGeometry());
 
+		NeighborhoodRedis neighborhoodRedis = getNeighborhoodRedis(neighborhoodMongo, restaurantsMongo);
+		neighborhoodRedisRepository.save(neighborhoodRedis);
+
+		return neighborhoodRedis;
+	}
+
+	private NeighborhoodRedis getNeighborhoodRedis(NeighborhoodMongo neighborhoodMongo, List<RestaurantMongo> restaurantsMongo) {
 		List<RestaurantRedis> restaurantRedis = getRestaurantRedis(restaurantsMongo);
 
-		NeighborhoodRedis novo = new NeighborhoodRedis();
-		novo.setId(neighborhoodMongo.getId());
-		novo.setName(neighborhoodMongo.getName());
-		novo.setRestaurants(restaurantRedis);
+		NeighborhoodRedis neighborhoodRedis = new NeighborhoodRedis();
+		neighborhoodRedis.setId(neighborhoodMongo.getId());
+		neighborhoodRedis.setName(neighborhoodMongo.getName());
+		neighborhoodRedis.setRestaurants(restaurantRedis);
 
-		neighborhoodRedisRepository.save(novo);
-
-		return novo;
+		return neighborhoodRedis;
 	}
 
 	private List<RestaurantRedis> getRestaurantRedis(List<RestaurantMongo> restaurantsMongo) {
