@@ -23,9 +23,7 @@ public class RestaurantServiceImpl implements RestaurantService {
 	public NeighborhoodRedis findInNeighborhood(double x, double y) {
 
 		//Encontrar bairro no mongo
-		GeoJsonPoint userLocation = new GeoJsonPoint(x, y);
-		NeighborhoodMongo neighborhoodMongo =
-				mongoTemplate.findOne(new Query(Criteria.where("geometry").intersects(userLocation)), NeighborhoodMongo.class);
+		NeighborhoodMongo neighborhoodMongo = getNeighborhoodByUserLocation(x, y);
 
 		//se etiver salvo no redis neighborhood:id_bairro
 		Optional<NeighborhoodRedis> neighborhoodRedisAlreadyExists =
@@ -39,17 +37,7 @@ public class RestaurantServiceImpl implements RestaurantService {
 		List<RestaurantMongo> restaurantsMongo = restaurantsMongoRepository
 				.findAllByLocationWithin(neighborhoodMongo.getGeometry());
 
-		List<RestaurantRedis> restaurantRedis = new ArrayList<>();
-		for(RestaurantMongo restaurantMongo: restaurantsMongo) {
-
-			RestaurantRedis restaurantRedis1 = new RestaurantRedis();
-			restaurantRedis1.setId(restaurantMongo.getId());
-			restaurantRedis1.setName(restaurantMongo.getName());
-			restaurantRedis1.setX(restaurantMongo.getLocation().getX());
-			restaurantRedis1.setY(restaurantMongo.getLocation().getY());
-
-			restaurantRedis.add(restaurantRedis1);
-		}
+		List<RestaurantRedis> restaurantRedis = getRestaurantRedis(restaurantsMongo);
 
 		NeighborhoodRedis novo = new NeighborhoodRedis();
 		novo.setId(neighborhoodMongo.getId());
@@ -59,5 +47,25 @@ public class RestaurantServiceImpl implements RestaurantService {
 		neighborhoodRedisRepository.save(novo);
 
 		return novo;
+	}
+
+	private List<RestaurantRedis> getRestaurantRedis(List<RestaurantMongo> restaurantsMongo) {
+		List<RestaurantRedis> restaurants = new ArrayList<>();
+
+		for(RestaurantMongo restaurantMongo: restaurantsMongo) {
+			RestaurantRedis restaurantRedis = new RestaurantRedis();
+			restaurantRedis.setId(restaurantMongo.getId());
+			restaurantRedis.setName(restaurantMongo.getName());
+			restaurantRedis.setX(restaurantMongo.getLocation().getX());
+			restaurantRedis.setY(restaurantMongo.getLocation().getY());
+
+			restaurants.add(restaurantRedis);
+		}
+		return restaurants;
+	}
+
+	private NeighborhoodMongo getNeighborhoodByUserLocation(double x, double y) {
+		GeoJsonPoint userLocation = new GeoJsonPoint(x, y);
+		return mongoTemplate.findOne(new Query(Criteria.where("geometry").intersects(userLocation)), NeighborhoodMongo.class);
 	}
 }
